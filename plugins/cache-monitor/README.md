@@ -5,3 +5,8 @@ Installation über Marketplace: `/plugin marketplace add <owner>/<repo>` und `/p
 
 ## Statuszeile für ältere Claude-Code-Versionen
 Versionen ohne Mod-Unterstützung laden das Plugin ohne Funktion. Dafür gibt es `statusline/cache-statusline.js` (Node.js): Ampel mit 1-h-Cache-Countdown, Tokens, Kosten. Einrichtung siehe Repository-README.
+
+### Hinweise zur Anzeige
+- Statuszeilen-Skript: Summen laufen über das ganze Transcript (je API-Antwort einmal, Subagenten eingeschlossen, passend zu den Kosten); die Cache-Uhr zählt nur den Hauptthread. Die Mod zählt ab ihrem Start. Ctx im Skript ist ein Näherungswert aus der letzten Antwort.
+- Das Skript aktualisiert sich nur bei Claude-Code-Ereignissen; der Countdown tickt nicht von selbst. Die Mod aktualisiert alle 10 Sekunden.
+- Bestätigt: Claude Code 2.1.220 lädt das Plugin ohne Fehler (ohne Funktion); Claude Code 2.1.310 im Terminal und `/cache` in der Desktop-App funktionieren.
