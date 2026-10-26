@@ -1,1 +1,1 @@
-{ "name": "cache-monitor", "version": "0.1.0", "description": "Token-, Kosten- und Cache-Countdown (1h TTL) mit Ampel in Band und Statuszeile", "license": "MIT", "types": "./types/index.d.ts" }
+{ "name": "cache-monitor", "version": "0.1.1", "description": "Token-, Kosten- und Cache-Countdown (1h TTL) mit Ampel in Band und Statuszeile", "license": "MIT", "types": "./types/index.d.ts" }
