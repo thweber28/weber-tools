@@ -1,0 +1,11 @@
+{
+  "name": "weber-tools",
+  "owner": { "name": "T. Weber" },
+  "plugins": [
+    {
+      "name": "cache-monitor",
+      "source": "./plugins/cache-monitor",
+      "description": "Token-, Kosten- und Cache-Countdown (1h TTL) mit Ampel"
+    }
+  ]
+}
