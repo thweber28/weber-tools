@@ -11,15 +11,20 @@ process.stdin.on('data', d => (raw += d)).on('end', () => {
   try { input = JSON.parse(raw) } catch {}
   let last = null
   const sum = { input: 0, output: 0, read: 0, write: 0 }
+  const byId = new Map() // pro API-Antwort (message.id) nur der letzte Eintrag zählt
   try {
+    let n = 0
     for (const line of fs.readFileSync(input.transcript_path, 'utf8').split('\n')) {
       if (!line) continue
       let e; try { e = JSON.parse(line) } catch { continue }
       const u = e && e.message && e.message.usage
-      if (e.type !== 'assistant' || !u || e.isSidechain) continue
-      const cur = { at: Date.parse(e.timestamp), input: u.input_tokens || 0, output: u.output_tokens || 0, read: u.cache_read_input_tokens || 0, write: u.cache_creation_input_tokens || 0 }
+      if (e.type !== 'assistant' || !u) continue
+      const cur = { at: Date.parse(e.timestamp), main: !e.isSidechain, input: u.input_tokens || 0, output: u.output_tokens || 0, read: u.cache_read_input_tokens || 0, write: u.cache_creation_input_tokens || 0 }
+      byId.set(e.message.id || 'n' + n++, cur)
+    }
+    for (const cur of byId.values()) {
       sum.input += cur.input; sum.output += cur.output; sum.read += cur.read; sum.write += cur.write
-      last = cur
+      if (cur.main) last = cur // Cache-Uhr nur Hauptthread; Summen enthalten auch Subagenten wie die Kosten
     }
   } catch {}
   let lamp = '🔴', t = 'kalt', color = '31'
