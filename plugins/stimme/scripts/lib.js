@@ -22,7 +22,8 @@ function clean(text) {
   return text
     .replace(/\[[^\]]*\]/g, ' ')
     .replace(/<\/?[a-z]+[^>]*>/gi, ' ')
-    .replace(/[`*_#>~|]/g, ' ')
+    .replace(/[`*#>~|]/g, ' ')
+    .replace(/(^|[^\p{L}\p{N}])_+|_+(?=[^\p{L}\p{N}]|$)/gu, '$1 ')
     .replace(/\s+/g, ' ')
     .replace(/ ([.,!?;:])/g, '$1')
     .trim();
@@ -38,8 +39,8 @@ function spokenParts(message, cfg) {
     const i = line.indexOf(':');
     if (i > -1 && i <= 12 && !line.slice(0, i).includes('[')) {
       const label = line.slice(0, i).trim().toLowerCase();
-      speaker = Object.keys(cfg.speaker_labels).find(k => cfg.speaker_labels[k].includes(label)) || 'claude';
-      line = line.slice(i + 1).trim();
+      const known = Object.keys(cfg.speaker_labels).find(k => cfg.speaker_labels[k].includes(label));
+      if (known) { speaker = known; line = line.slice(i + 1).trim(); }
     }
     line = clean(line);
     if (line) parts.push({ speaker, text: line.slice(0, cfg.max_chars) });
@@ -49,8 +50,9 @@ function spokenParts(message, cfg) {
 
 function stop() {
   try {
-    const pid = parseInt(fs.readFileSync(PIDFILE, 'utf8'), 10);
-    if (pid) process.kill(pid);
+    // Nur beenden, wenn die PID frisch ist (Schutz vor wiederverwendeten PIDs nach Ende der Ausgabe).
+    const [pid, t] = fs.readFileSync(PIDFILE, 'utf8').split(' ').map(Number);
+    if (pid && Date.now() - t < 120000) process.kill(pid);
   } catch { /* nichts läuft */ }
   try { fs.unlinkSync(PIDFILE); } catch { /* egal */ }
 }
@@ -60,6 +62,9 @@ function speak(parts, cfg) {
   stop();
   if (process.env.STIMME_DRYRUN) { console.log(JSON.stringify(parts)); return null; }
   fs.mkdirSync(TMP, { recursive: true });
+  for (const f of fs.readdirSync(TMP)) { // liegengebliebene Job-Dateien (abgebrochene Ausgabe) aufräumen
+    try { if (f.startsWith('job-') && Date.now() - fs.statSync(path.join(TMP, f)).mtimeMs > 600000) fs.unlinkSync(path.join(TMP, f)); } catch {}
+  }
   const job = path.join(TMP, `job-${Date.now()}.json`);
   fs.writeFileSync(job, JSON.stringify({ parts, voices: cfg.voices, rate: cfg.rate }), 'utf8');
   let cmd, args;
@@ -73,7 +78,7 @@ function speak(parts, cfg) {
   }
   const child = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true });
   child.on('error', () => {});
-  if (child.pid) fs.writeFileSync(PIDFILE, String(child.pid));
+  if (child.pid) fs.writeFileSync(PIDFILE, `${child.pid} ${Date.now()}`);
   child.unref();
   return child.pid;
 }
