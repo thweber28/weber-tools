@@ -1,11 +1,18 @@
 {
   "name": "weber-tools",
-  "owner": { "name": "T. Weber" },
+  "owner": {
+    "name": "T. Weber"
+  },
   "plugins": [
     {
       "name": "cache-monitor",
       "source": "./plugins/cache-monitor",
       "description": "Token-, Kosten- und Cache-Countdown (1h TTL) mit Ampel"
+    },
+    {
+      "name": "stimme",
+      "source": "./plugins/stimme",
+      "description": "Claude spricht jede Antwort als kurze Sprechzeile (Windows-Systemstimme, zweite Stimme für den Prüfer)"
     }
   ]
 }
