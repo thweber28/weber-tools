@@ -10,4 +10,6 @@ Installation: `/plugin marketplace add thweber28/weber-tools` dann `/plugin inst
 
 Stimmen: Standard sind Microsoft Stefan/Hedda/Katja (Windows-Sprachpaket Deutsch). Eigene Werte in `%USERPROFILE%\.claude\stimme.json`, z. B. `{ "rate": 1, "voices": { "claude": ["Hedda"], "pruefer": ["Katja"] } }`. Installierte Stimmen: `Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).GetInstalledVoices().VoiceInfo.Name`.
 
-Grenzen: Gesprochen wird nur, wenn Hooks laufen (Claude Code lokal im Terminal, nicht in Cloud-Sitzungen). Die Systemstimme kann keine Emotionen; Regieanweisungen in [..] werden entfernt. Prüfen ohne Ton: `echo {"last_assistant_message":"🔊 Test."} | set STIMME_DRYRUN=1 && node scripts\stop-hook.js`.
+Grenzen: Gesprochen wird nur, wenn Hooks laufen (Claude Code lokal im Terminal, nicht in Cloud-Sitzungen). Die Systemstimme kann keine Emotionen; Regieanweisungen in [..] werden entfernt. Prüfen ohne Ton (PowerShell): `$env:STIMME_DRYRUN=1; '{"last_assistant_message":"🔊 Test."}' | node scripts\stop-hook.js`.
+
+Hinweise: Eine neue Ansage (auch Freigabe-Frage) unterbricht die laufende Sprechzeile. Gibt es nur eine deutsche Stimme, unterscheidet sich der Prüfer nur im Tempo; eine zweite deutsche Stimme über Einstellungen → Zeit & Sprache → Sprache nachinstallieren. `speak.ps1` ist bisher nicht unter Windows getestet.
