@@ -1,0 +1,17 @@
+{
+  "marker": "🔊",
+  "max_chars": 400,
+  "rate": 0,
+  "voices": {
+    "claude": ["Stefan", "Conrad", "Hedda", "Katja"],
+    "pruefer": ["Katja", "Hedda", "Stefan"]
+  },
+  "speaker_labels": {
+    "claude": ["claude", "ich"],
+    "pruefer": ["prüfer", "pruefer", "prüferin", "reviewer"]
+  },
+  "notification_lines": {
+    "permission": "Kurze Frage, bevor ich weitermache. Ich brauche dein Okay.",
+    "idle": "Ich warte noch auf dich."
+  }
+}
