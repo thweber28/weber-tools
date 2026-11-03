@@ -1,4 +1,10 @@
 // SessionStart-Hook: gibt Claude die Sprechregel mit (Plugins können keine CLAUDE.md mitliefern).
+const { spawn } = require('child_process');
+const { loadConfig } = require('./lib');
+if (loadConfig().untertitel_server) { // Untertitel-Server im Hintergrund starten (beendet sich selbst, wenn schon einer läuft)
+  const c = spawn(process.execPath, [require('path').join(__dirname, 'untertitel.js')], { detached: true, stdio: 'ignore', windowsHide: true });
+  c.on('error', () => {}); c.unref();
+}
 const rule = `# Du hast eine Stimme
 Jede Antwort wird vorgelesen, aber nur die Sprechzeile am Ende. Beende JEDE Antwort mit genau einer Zeile, die mit 🔊 beginnt:
 🔊 Ein oder zwei kurze Sätze.

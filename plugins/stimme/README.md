@@ -8,6 +8,8 @@ Installation: `/plugin marketplace add thweber28/weber-tools` dann `/plugin inst
 - Agent `stimme:pruefer`: zweite Stimme (Dialog `🔊 Prüfer: …` / `🔊 Claude: …`).
 - Die Sprechregel kommt per SessionStart-Hook, keine CLAUDE.md nötig.
 
+Untertitelfenster: Der Server startet mit jeder Sitzung (aus: `"untertitel_server": false` in `stimme.json`). Fenster öffnen mit `/stimme:untertitel` oder http://127.0.0.1:4790/ im Browser. Das gesprochene Wort wird hervorgehoben (Wortgrenzen der Windows-Stimme). Nur lokal erreichbar. Unter Windows noch ungetestet.
+
 Stimmen: Standard sind Microsoft Stefan/Hedda/Katja (Windows-Sprachpaket Deutsch). Eigene Werte in `%USERPROFILE%\.claude\stimme.json`, z. B. `{ "rate": 1, "voices": { "claude": ["Hedda"], "pruefer": ["Katja"] } }`. Installierte Stimmen: `Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).GetInstalledVoices().VoiceInfo.Name`.
 
 Grenzen: Gesprochen wird nur, wenn Hooks laufen (Claude Code lokal im Terminal, nicht in Cloud-Sitzungen). Die Systemstimme kann keine Emotionen; Regieanweisungen in [..] werden entfernt. Prüfen ohne Ton (PowerShell): `$env:STIMME_DRYRUN=1; '{"last_assistant_message":"🔊 Test."}' | node scripts\stop-hook.js`.

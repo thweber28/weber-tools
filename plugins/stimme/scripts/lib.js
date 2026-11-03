@@ -7,6 +7,11 @@ const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const TMP = path.join(os.tmpdir(), 'claude-stimme');
 const PIDFILE = path.join(TMP, 'player.pid');
+const STATE = path.join(TMP, 'state.json');
+
+function writeState(state) {
+  try { fs.mkdirSync(TMP, { recursive: true }); fs.writeFileSync(STATE, JSON.stringify(state), 'utf8'); } catch {}
+}
 
 function loadConfig() {
   const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
@@ -55,6 +60,7 @@ function stop() {
     if (pid && Date.now() - t < 120000) process.kill(pid);
   } catch { /* nichts läuft */ }
   try { fs.unlinkSync(PIDFILE); } catch { /* egal */ }
+  try { const st = JSON.parse(fs.readFileSync(STATE, 'utf8')); st.done = true; writeState(st); } catch {}
 }
 
 function speak(parts, cfg) {
@@ -66,7 +72,8 @@ function speak(parts, cfg) {
     try { if (f.startsWith('job-') && Date.now() - fs.statSync(path.join(TMP, f)).mtimeMs > 600000) fs.unlinkSync(path.join(TMP, f)); } catch {}
   }
   const job = path.join(TMP, `job-${Date.now()}.json`);
-  fs.writeFileSync(job, JSON.stringify({ parts, voices: cfg.voices, rate: cfg.rate }), 'utf8');
+  writeState({ id: Date.now(), parts, idx: 0, pos: -1, len: 0, done: false });
+  fs.writeFileSync(job, JSON.stringify({ parts, voices: cfg.voices, rate: cfg.rate, stateFile: STATE }), 'utf8');
   let cmd, args;
   if (process.platform === 'win32') {
     cmd = 'powershell.exe';
@@ -87,4 +94,4 @@ function readStdinJson() {
   try { return JSON.parse(fs.readFileSync(0, 'utf8')); } catch { return {}; }
 }
 
-module.exports = { loadConfig, spokenParts, speak, stop, readStdinJson, clean };
+module.exports = { TMP, loadConfig, spokenParts, speak, stop, readStdinJson, clean };

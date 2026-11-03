@@ -2,6 +2,8 @@
   "marker": "🔊",
   "max_chars": 400,
   "rate": 0,
+  "caption_port": 4790,
+  "untertitel_server": true,
   "voices": {
     "claude": ["Stefan", "Conrad", "Hedda", "Katja"],
     "pruefer": ["Katja", "Hedda", "Stefan"]
