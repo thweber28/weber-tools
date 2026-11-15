@@ -13,6 +13,11 @@
       "name": "stimme",
       "source": "./plugins/stimme",
       "description": "Claude spricht jede Antwort als kurze Sprechzeile (Windows-Systemstimme, zweite Stimme für den Prüfer)"
+    },
+    {
+      "name": "zeichnung-3d",
+      "source": "./plugins/zeichnung-3d",
+      "description": "Bemaßte Zeichnungen → Maßtabelle, Wohnflächenberechnung (Excel), Blender-3D-Modell, Bilder und Walkthrough"
     }
   ]
 }

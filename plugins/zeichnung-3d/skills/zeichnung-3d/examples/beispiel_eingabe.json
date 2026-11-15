@@ -1,0 +1,38 @@
+{
+  "projekt": "BEISPIEL (fiktiv)",
+  "bauzustand": "Beispielplan Erdgeschoss",
+  "regelwerk": "WoFlV",
+  "massart": "roh",
+  "massquelle": "Bauzeichnung M 1:100, Maßketten laut Maßtabelle",
+  "datum": "2026-11-15",
+  "wohnungen": [
+    {
+      "name": "Wohnung 1",
+      "geschoss": "EG",
+      "raeume": [
+        {"name": "Küche", "laenge": 4.00, "breite": 3.50},
+        {"name": "Wohnen", "laenge": 6.00, "breite": 4.00},
+        {"name": "Schlafzimmer", "laenge": 4.385, "breite": 4.00},
+        {"name": "Bad", "laenge": 3.095, "breite": 2.885},
+        {"name": "Flur", "laenge": 3.50, "breite": 1.20},
+        {"name": "Dachschräge Kind (1–2 m lichte Höhe)", "laenge": 4.00, "breite": 1.00, "faktor": 0.5, "anmerkung": "§ 4 Nr. 2 WoFlV, lichte Höhe 1,00 bis < 2,00 m"}
+      ],
+      "freisitze": [
+        {"name": "Terrasse", "laenge": 5.00, "breite": 3.00, "faktor": 0.25, "anmerkung": "§ 4 Nr. 4 WoFlV"}
+      ],
+      "angabe_auftraggeber": 60.0
+    },
+    {
+      "name": "Wohnung 2",
+      "geschoss": "OG",
+      "raeume": [
+        {"name": "Wohnen/Küche", "laenge": 7.00, "breite": 4.50},
+        {"name": "Schlafzimmer", "laenge": 4.00, "breite": 3.50},
+        {"name": "Bad", "laenge": 2.50, "breite": 2.20}
+      ],
+      "freisitze": [
+        {"name": "Balkon", "laenge": 3.00, "breite": 1.50, "faktor": 0.25, "anmerkung": "§ 4 Nr. 4 WoFlV"}
+      ]
+    }
+  ]
+}
