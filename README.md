@@ -1,6 +1,8 @@
 # weber-tools
 Claude-Code-Marketplace mit `cache-monitor`: Token-/Kostenanzeige und Cache-Countdown (1h TTL, Ampel grün/gelb/rot).
 
+Weitere Plugins: `stimme` (Sprechzeile), `zeichnung-3d` (Zeichnung → Maßtabelle, Wohnfläche-Excel, Blender-3D, Walkthrough; siehe `plugins/zeichnung-3d/README.md`).
+
 Installation (nach Veröffentlichung auf GitHub):
 `/plugin marketplace add <owner>/<repo>` dann `/plugin install cache-monitor@weber-tools`
 
