@@ -12,8 +12,8 @@ Quelle: amtlicher Text (gesetze-im-internet.de), vom Büro bereitgestellt. **Gep
 
 ## 2. II. BV, §§ 42–44 (Fassung bis 31.12.2003, „a. F.")
 Quelle: Wortlaut-Abdruck im Info 06/2018 des Berliner Mietervereins (vom Büro bereitgestellt, Sekundärquelle). Die aktuelle II. BV (gesetze-im-internet.de) enthält in § 42 nur noch die Überleitungsvorschrift, §§ 43 und 44 sind aufgehoben. **Die amtliche Altfassung liegt nicht vor.**
-- § 43: Wahl Fertigmaße oder Rohbaumaße (Wahl bleibt für spätere Berechnungen maßgebend). Bei Rohbaumaßen Kürzung um **3 vom Hundert**. Abzuziehen u. a. Pfeiler/Säulen (über 0,1 m², raumhoch), Treppen mit über drei Steigungen. Hinzuzurechnen u. a. Fenster-/Wandnischen (bis Fußboden, über 0,13 m tief, über 0,1 m²), Erker und Wandschränke (≥ 0,5 m²), Raumteile unter Treppen (lichte Höhe ≥ 2 m). Türnischen nicht.
-- § 44: Anrechnung ≥ 2 m voll; ≥ 1 m und < 2 m halb, ebenso Wintergärten, Schwimmbäder u. ä.; < 1 m nicht. Balkone, Loggien, Dachgärten, gedeckte Freisitze nach Bestimmung bis zur Hälfte. Pauschale Abzüge bis 10 % bei bestimmten Wohngebäuden.
+- § 43 (Absätze laut Abdruck): Abs. 1 Wahl Fertigmaße oder Rohbaumaße (Wahl bleibt für spätere Berechnungen maßgebend). Abs. 3 Bei Rohbaumaßen Kürzung um **3 vom Hundert**. Abs. 4 Abzuziehen u. a. Pfeiler/Säulen (über 0,1 m², raumhoch), Treppen mit über drei Steigungen. Abs. 5 Hinzuzurechnen u. a. Fenster-/Wandnischen (bis Fußboden, über 0,13 m tief, über 0,1 m²), Erker und Wandschränke (≥ 0,5 m²), Raumteile unter Treppen (lichte Höhe ≥ 2 m). Türnischen nicht.
+- § 44 (Absätze laut Abdruck): Abs. 1 Anrechnung ≥ 2 m voll; ≥ 1 m und < 2 m halb, ebenso Wintergärten, Schwimmbäder u. ä.; < 1 m nicht. Abs. 2 Balkone, Loggien, Dachgärten, gedeckte Freisitze bis zur Hälfte. Abs. 3 Pauschale Abzüge bis 10 % bei bestimmten Wohngebäuden.
 - Anwendung laut Berliner Mieterverein (unter Verweis auf BGH): bei Mietverträgen bis 31.12.2003 grundsätzlich II. BV, ab 1.1.2004 WoFlV, sofern nichts anderes vereinbart oder ortsüblich.
 
 ## 3. DIN 277:2021-08 (Grundflächen und Rauminhalte im Hochbau)
