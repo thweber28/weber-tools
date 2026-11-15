@@ -1,1 +1,9 @@
-{ "name": "zeichnung-3d", "version": "0.1.0", "description": "Aus bemaßten Bauzeichnungen: Maßtabelle, Wohnflächenberechnung (Excel im Büro-Layout), maßgenaues Blender-3D-Modell, Bilder und Walkthrough", "license": "MIT" }
+{
+  "name": "zeichnung-3d",
+  "version": "0.1.0",
+  "description": "Aus bemaßten Bauzeichnungen: Maßtabelle, Wohnflächenberechnung (Excel im Büro-Layout), maßgenaues Blender-3D-Modell, Bilder und Walkthrough",
+  "license": "MIT",
+  "author": {
+    "name": "T. Weber"
+  }
+}

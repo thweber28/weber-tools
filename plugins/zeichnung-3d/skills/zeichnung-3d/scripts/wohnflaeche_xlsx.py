@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """Erzeugt die Wohnflächenberechnung als Excel-Datei im Büro-Layout (Cockpit-Format).
 
-Aufruf:  python wohnflaeche_xlsx.py eingabe.json ausgabe.xlsx
+Aufruf:  python wohnflaeche_xlsx.py eingabe.json ausgabe.xlsx [--ueberschreiben] [--mit-werten]
 Voraussetzung: pip install openpyxl
+  --ueberschreiben  Zieldatei darf ersetzt werden (sonst Abbruch, wenn sie existiert)
+  --mit-werten      rechnet die Formeln mit LibreOffice (soffice) neu und speichert die Ergebnisse
+                    in der Datei, falls das Cockpit Werte ohne Neuberechnung liest
 Eingabeformat: references/eingabeformat.md, Beispiel: examples/beispiel_eingabe.json
 Maße in m, intern auf 3 Nachkommastellen gerundet (ROUND), Anzeige mit 2 Nachkommastellen.
 Alle Rechenwerte sind Excel-Formeln, damit die Berechnung nachprüfbar bleibt.
 Fehlende oder ungültige Eingaben führen zum Abbruch mit Klartext (nichts wird geschätzt).
 """
 import json
+import math
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -51,7 +59,8 @@ REGELWERKE = {
         ],
     },
 }
-HINWEIS_PLAN = "Berechnung auf Grundlage von Plänen, keine Ausmessung vor Ort. Bei abweichender Bauausführung neu ermitteln (§ 3 Abs. 4 WoFlV)."
+HINWEIS_PLAN = ("Berechnung auf Grundlage von Plänen, keine Ausmessung vor Ort. Die Bauzeichnung muss für ein bauordnungsrechtliches Verfahren gefertigt oder dafür geeignet sein und die Ermittlung der lichten Maße ermöglichen; bei abweichender Bauausführung ist neu zu ermitteln (§ 3 Abs. 4 WoFlV).")
+MAX_MASS = 1000.0  # m, Plausibilitätsgrenze
 FONT = "Arial"
 BLAU, ORANGE, GRUEN = "DCE6F1", "FCE4D6", "E2EFDA"
 _d = Side(style="thin", color="808080")
@@ -62,17 +71,33 @@ class Eingabefehler(Exception):
     pass
 
 
+def zahl(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
 def pruefe(d):
-    """Validiert die Eingabe. Bricht mit Klartext ab, schätzt nichts."""
+    """Validiert die Eingabe. Bricht mit Klartext ab, schätzt nichts. Gibt Warnungen zurück."""
+    warn = []
+    if not isinstance(d, dict):
+        raise Eingabefehler("Wurzel der JSON-Datei muss ein Objekt sein")
     if d.get("regelwerk") not in REGELWERKE:
         raise Eingabefehler(f"regelwerk muss eines von {list(REGELWERKE)} sein, nicht {d.get('regelwerk')!r}")
     if d.get("massart", "roh") not in ("roh", "fertig"):
         raise Eingabefehler("massart muss 'roh' oder 'fertig' sein")
-    if not d.get("wohnungen"):
+    if "putzabzug" in d and not (zahl(d["putzabzug"]) and 0 <= d["putzabzug"] <= 0.1):
+        raise Eingabefehler("putzabzug muss eine Zahl von 0 bis 0,1 sein (z. B. 0,03)")
+    if "pauschalabzug_44_abs3" in d:
+        if d["regelwerk"] != "II_BV_aF":
+            raise Eingabefehler("pauschalabzug_44_abs3 gibt es nur beim Regelwerk II_BV_aF")
+        if not (zahl(d["pauschalabzug_44_abs3"]) and 0 <= d["pauschalabzug_44_abs3"] <= 0.1):
+            raise Eingabefehler("pauschalabzug_44_abs3 muss eine Zahl von 0 bis 0,1 sein")
+    if not isinstance(d.get("wohnungen"), list) or not d["wohnungen"]:
         raise Eingabefehler("wohnungen fehlt oder ist leer")
     fmax = REGELWERKE[d["regelwerk"]]["faktor_max"]
     gesehen = set()
     for w in d["wohnungen"]:
+        if not isinstance(w, dict):
+            raise Eingabefehler("jede Wohnung muss ein Objekt sein")
         for k in ("name", "geschoss"):
             if not str(w.get(k, "")).strip():
                 raise Eingabefehler(f"Wohnung ohne {k}")
@@ -80,28 +105,37 @@ def pruefe(d):
         if schluessel in gesehen:
             raise Eingabefehler(f"Wohnung/Geschoss doppelt: {w['name']} / {w['geschoss']}. Bitte eindeutig benennen.")
         gesehen.add(schluessel)
-        if not w.get("raeume"):
+        if not isinstance(w.get("raeume"), list) or not w["raeume"]:
             raise Eingabefehler(f"{w['name']}: keine Räume angegeben")
+        if w.get("freisitze") is not None and not isinstance(w["freisitze"], list):
+            raise Eingabefehler(f"{w['name']}: freisitze muss eine Liste sein")
         for art, liste in (("Raum", w["raeume"]), ("Freisitz", w.get("freisitze") or [])):
             for r in liste:
+                if not isinstance(r, dict):
+                    raise Eingabefehler(f"{w['name']}: jeder {art} muss ein Objekt sein")
                 ort = f"{w['name']} / {art} {r.get('name', '?')!r}"
                 if not str(r.get("name", "")).strip():
                     raise Eingabefehler(f"{ort}: Name fehlt")
                 for k in ("laenge", "breite"):
                     v = r.get(k)
-                    if not isinstance(v, (int, float)) or isinstance(v, bool) or v <= 0:
-                        raise Eingabefehler(f"{ort}: {k} fehlt oder ist nicht > 0 (Maße werden nie geschätzt)")
-                f = r.get("faktor", None)
+                    if not zahl(v) or not (0 < v <= MAX_MASS):
+                        raise Eingabefehler(f"{ort}: {k} fehlt oder liegt nicht in 0 bis {MAX_MASS:g} m (Maße werden nie geschätzt)")
+                if "faktor" in r and r["faktor"] is None:
+                    raise Eingabefehler(f"{ort}: faktor ist null (angeben oder weglassen)")
+                f = r.get("faktor")
                 if art == "Freisitz" and f is None:
-                    raise Eingabefehler(f"{ort}: faktor fehlt (Regelfall 0,25, begründen)")
+                    raise Eingabefehler(f"{ort}: faktor fehlt (Regelfall WoFlV 0,25, begründen)")
                 f = 1.0 if f is None else f
-                if not isinstance(f, (int, float)) or isinstance(f, bool) or not (0 <= f <= (fmax if art == "Freisitz" else 1.0)):
+                if not zahl(f) or not (0 <= f <= (fmax if art == "Freisitz" else 1.0)):
                     raise Eingabefehler(f"{ort}: faktor {f!r} ungültig (zulässig 0 bis {fmax if art == 'Freisitz' else 1.0})")
                 if d["regelwerk"] == "DIN_277" and f != 1.0:
                     raise Eingabefehler(f"{ort}: DIN 277 kennt keine Anrechnungsfaktoren (faktor muss 1 sein)")
+                if f == 0:
+                    warn.append(f"{ort}: faktor 0 (Fläche wird nicht angerechnet)")
         a = w.get("angabe_auftraggeber")
-        if a is not None and (not isinstance(a, (int, float)) or a <= 0):
-            raise Eingabefehler(f"{w['name']}: angabe_auftraggeber muss > 0 sein oder fehlen")
+        if a is not None and (not zahl(a) or a <= 0):
+            raise Eingabefehler(f"{w['name']}: angabe_auftraggeber muss eine Zahl > 0 sein oder fehlen")
+    return warn
 
 
 def putzabzug(d):
@@ -135,9 +169,11 @@ def zelle(ws, ref, wert=None, fett=False, fmt=None, farbe=None, ausr=None, kursi
 
 def blatt_name(w):
     name = f"{w['name']} - {w['geschoss']}"
-    for z in "[]:*?/\\":
-        name = name.replace(z, "")
-    return name[:31]
+    name = "".join(ch for ch in name if ch.isprintable() and ch not in "[]:*?/\\")
+    name = " ".join(name.split()).strip("'").strip()
+    if not name:
+        raise Eingabefehler("Blattname wäre leer")
+    return name[:31].strip("'").strip()
 
 
 def q(blatt):
@@ -162,7 +198,12 @@ def parameter_blatt(wb, d):
     for i, (k, v) in enumerate(zeilen, start=1):
         zelle(ws, f"A{i}", k, fett=True, farbe=BLAU)
         zelle(ws, f"B{i}", v, fmt="0.0%" if k.startswith("Putz") else None, ausr="left", text=True)
-    for i, h in enumerate(REGELWERKE[d["regelwerk"]]["hinweise"] + [HINWEIS_PLAN], start=len(zeilen) + 2):
+    extra = []
+    if putzabzug(d) not in (0.0, 0.03) and REGELWERKE[d["regelwerk"]]["abzug"]:
+        extra.append(f"Der Putz- und Belagabzug weicht vom Büro-Standard (3,0 %) ab: {putzabzug(d):.1%}.")
+    if d.get("pauschalabzug_44_abs3"):
+        extra.append(f"Zusätzlicher Pauschalabzug nach § 44 Abs. 3 II. BV a. F.: {d['pauschalabzug_44_abs3']:.1%} (Sekundärquelle, Voraussetzungen im Einzelfall prüfen).")
+    for i, h in enumerate(REGELWERKE[d["regelwerk"]]["hinweise"] + extra + [HINWEIS_PLAN], start=len(zeilen) + 2):
         ws.merge_cells(f"A{i}:B{i}")
         zelle(ws, f"A{i}", h, kursiv=True, ausr="left", rahmen=False, text=True)
         ws.row_dimensions[i].height = 30
@@ -183,20 +224,20 @@ def wohnung_blatt(wb, w, d, putz_ref):
         zelle(ws, f"{sp}4", t, fett=True, farbe=BLAU, ausr="center")
     info = []
 
-    def raumzeile(r, z):
+    def raumzeile(r, z, art):
         zelle(ws, f"A{z}", str(r["name"]), text=True)
         zelle(ws, f"B{z}", r["laenge"], fmt="0.00")
         zelle(ws, f"C{z}", r["breite"], fmt="0.00")
         zelle(ws, f"D{z}", f"=ROUND(B{z}*C{z},3)", fmt="0.00")
-        zelle(ws, f"E{z}", r.get("faktor", 1.0), fmt="0.00")
+        zelle(ws, f"E{z}", 1.0 if r.get("faktor") is None else r["faktor"], fmt="0.00")
         zelle(ws, f"F{z}", f"=ROUND(D{z}*E{z},3)", fmt="0.00")
         zelle(ws, f"G{z}", str(r.get("anmerkung", "")), ausr="left", text=True)
-        info.append(z)
+        info.append((z, art))
 
     zeile = 5
     erste = zeile
     for r in w["raeume"]:
-        raumzeile(r, zeile)
+        raumzeile(r, zeile, 'Raum')
         zeile += 1
     letzte = zeile - 1
     zs, abz, nach = zeile, zeile + 1, zeile + 2
@@ -216,14 +257,30 @@ def wohnung_blatt(wb, w, d, putz_ref):
         zelle(ws, f"{sp}{nach}")
     zelle(ws, f"F{nach}", f"=F{zs}+F{abz}", fett=True, fmt="0.00")
     zelle(ws, f"G{nach}")
-    zeile = nach + 1
+    basis = nach
+    pa = d.get("pauschalabzug_44_abs3") or 0
+    if pa:
+        pab, nach2 = nach + 1, nach + 2
+        zelle(ws, f"A{pab}", "Pauschalabzug § 44 Abs. 3 II. BV a. F.", fett=True)
+        for sp in "BCD":
+            zelle(ws, f"{sp}{pab}", farbe=ORANGE)
+        zelle(ws, f"E{pab}", pa, fmt="0.0%", farbe=ORANGE)
+        zelle(ws, f"F{pab}", f"=-ROUND(F{nach}*E{pab},3)", fmt="0.00", fett=True)
+        zelle(ws, f"G{pab}", "Sekundärquelle, Voraussetzungen im Einzelfall prüfen", kursiv=True, ausr="left")
+        zelle(ws, f"A{nach2}", "Grundfläche der Räume nach Abzügen", fett=True)
+        for sp in "BCDE":
+            zelle(ws, f"{sp}{nach2}")
+        zelle(ws, f"F{nach2}", f"=F{nach}+F{pab}", fett=True, fmt="0.00")
+        zelle(ws, f"G{nach2}")
+        basis = nach2
+    zeile = basis + 1
     ws.merge_cells(f"A{zeile}:G{zeile}")
     zelle(ws, f"A{zeile}", reg["freisitz"], fett=True, farbe=ORANGE, ausr="left")
     zeile += 1
     f_erste = zeile
     freisitze = w.get("freisitze") or []
     for r in freisitze:
-        raumzeile(r, zeile)
+        raumzeile(r, zeile, 'Freisitz')
         zeile += 1
     if not freisitze:  # leere Zeile zeigt das Layout, bleibt aber ohne Wert und ohne Raumliste-Eintrag
         for sp in "ABCDEFG":
@@ -240,7 +297,7 @@ def wohnung_blatt(wb, w, d, putz_ref):
     zelle(ws, f"A{wf}", reg["ende"].format(w=w["name"]), fett=True, farbe=GRUEN, text=True)
     for sp in "BCDE":
         zelle(ws, f"{sp}{wf}", farbe=GRUEN)
-    zelle(ws, f"F{wf}", f"=F{nach}+F{fs}", fett=True, fmt="0.00", farbe=GRUEN)
+    zelle(ws, f"F{wf}", f"=F{basis}+F{fs}", fett=True, fmt="0.00", farbe=GRUEN)
     zelle(ws, f"G{wf}", farbe=GRUEN)
     ang, abw = wf + 1, wf + 2
     zelle(ws, f"A{ang}", "Angabe des Auftraggebers (ca.)")
@@ -262,9 +319,31 @@ def wohnung_blatt(wb, w, d, putz_ref):
     return ws.title, info, wf
 
 
-def main(eingabe, ausgabe):
-    d = json.load(open(eingabe, encoding="utf-8"))
-    pruefe(d)
+def werte_einbetten(pfad):
+    """Rechnet die Formeln mit LibreOffice neu und ersetzt die Datei durch die Fassung mit gespeicherten Werten."""
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if not soffice:
+        raise Eingabefehler("--mit-werten benötigt LibreOffice (soffice). Alternativ Datei in Excel öffnen und speichern.")
+    with tempfile.TemporaryDirectory() as tmp:
+        r = subprocess.run([soffice, "--headless", "--convert-to", "xlsx:Calc MS Excel 2007 XML", "--outdir", tmp, pfad],
+                           capture_output=True, text=True)
+        neu = os.path.join(tmp, os.path.basename(pfad))
+        if r.returncode != 0 or not os.path.exists(neu):
+            raise Eingabefehler("Neuberechnung mit LibreOffice fehlgeschlagen: " + r.stderr.strip()[:200])
+        shutil.copyfile(neu, pfad)
+
+
+def main(eingabe, ausgabe, ueberschreiben=False, mit_werten=False):
+    try:
+        d = json.load(open(eingabe, encoding="utf-8"))
+    except FileNotFoundError:
+        raise Eingabefehler(f"Eingabedatei nicht gefunden: {eingabe}")
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise Eingabefehler(f"Eingabedatei ist kein gültiges JSON (UTF-8): {e}")
+    for hinweis in pruefe(d):
+        print("HINWEIS:", hinweis, file=sys.stderr)
+    if os.path.exists(ausgabe) and not ueberschreiben:
+        raise Eingabefehler(f"Zieldatei existiert bereits: {ausgabe}. Mit --ueberschreiben ersetzen (Freigabe einholen).")
     wb = Workbook()
     putz_ref = parameter_blatt(wb, d)
     ws2 = wb.create_sheet("Übersicht")
@@ -289,28 +368,35 @@ def main(eingabe, ausgabe):
     zelle(ws2, f"B{ende}")
     zelle(ws2, f"C{ende}", f"=SUM(C2:C{ende - 1})", fmt="0.00", fett=True)
     ws = wb.create_sheet("Raumliste")
-    kopf = ["Wohnung", "Geschoss", "Raum / Teilfläche", "Länge [m]", "Breite [m]", "Grundfläche [m²]", "Faktor", "anrechenbar [m²]"]
+    kopf = ["Wohnung", "Geschoss", "Art", "Raum / Teilfläche", "Länge [m]", "Breite [m]", "Grundfläche [m²]", "Faktor", "anrechenbar [m²]"]
     for i, t in enumerate(kopf, start=1):
         zelle(ws, f"{get_column_letter(i)}1", t, fett=True, farbe=BLAU, ausr="center")
-        ws.column_dimensions[get_column_letter(i)].width = [14, 10, 34, 11, 11, 16, 9, 16][i - 1]
+        ws.column_dimensions[get_column_letter(i)].width = [14, 10, 10, 34, 11, 11, 16, 9, 16][i - 1]
     z = 2
     for blatt, info, w in daten:
-        for zz in info:
+        for zz, art in info:
             zelle(ws, f"A{z}", str(w["name"]), text=True)
             zelle(ws, f"B{z}", str(w["geschoss"]), text=True)
-            zelle(ws, f"C{z}", f"={q(blatt)}A{zz}")
-            for sp, qs in zip("DEFGH", "BCDEF"):
+            zelle(ws, f"C{z}", art)
+            zelle(ws, f"D{z}", f"={q(blatt)}A{zz}")
+            for sp, qs in zip("EFGHI", "BCDEF"):
                 zelle(ws, f"{sp}{z}", f"={q(blatt)}{qs}{zz}", fmt="0.00")
             z += 1
     ws.freeze_panes = "A2"
     wb.save(ausgabe)
+    if mit_werten:
+        werte_einbetten(ausgabe)
     print(f"geschrieben: {ausgabe}")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    flags = {a for a in sys.argv[1:] if a.startswith("--")}
+    if len(args) != 2 or not flags <= {"--ueberschreiben", "--mit-werten"}:
         sys.exit(__doc__)
     try:
-        main(sys.argv[1], sys.argv[2])
+        main(args[0], args[1], "--ueberschreiben" in flags, "--mit-werten" in flags)
     except Eingabefehler as e:
         sys.exit(f"FEHLER: {e}")
+    except (KeyError, TypeError, ValueError, AttributeError) as e:
+        sys.exit(f"FEHLER: Eingabe hat ein unerwartetes Format ({type(e).__name__}: {e}). Siehe references/eingabeformat.md")
