@@ -27,3 +27,8 @@ Dieser Test läuft nicht automatisch. Er braucht Claude Desktop mit laufendem Bl
 - Abweichungen vom Erwarteten mit Schrittnummer festhalten und im Chat mit Claude Code besprechen.
 - Besonders prüfen: Werden unsichere Handschrift-Maße als Rückfrage behandelt? Werden die Pläne aus 1971 und 1996 verwechselt? Stimmen Geschosshöhen mit den bestätigten Angaben überein?
 - ImmoScout24-Test nur im Modus „Anzeige": Standbilder 4:3 ohne Text im Bild, Kennzeichnung in der Bildbeschreibung, Video ≤ 1 GB.
+
+## Testlauf 1 (2026-11-15, Schritte 1–4, ohne Blender-Verbindung)
+- Chat ohne Blender-Tool: Der Prompt meldete die fehlende Verbindung, baute nichts und simulierte keinen Code (✔). Auswertung, Maßtabelle mit Lesbarkeit, Kettensummen, Lückenliste und Rückfragen waren plausibel (Kriterien 1 bis 4 ✔).
+- Befunde: (a) falsche Bezeichnungen für Tab und Schaltfläche (KI-Gedächtnis) → Edge Case im Prompt mit exakten Namen ergänzt; (b) Schritte 1 bis 3 sollen auch ohne MCP laufen → im Edge Case ergänzt.
+- Kriterien 5 bis 11 noch offen. Voraussetzung: Chat in Claude Desktop, in dem das Tool `blender` sichtbar ist.
